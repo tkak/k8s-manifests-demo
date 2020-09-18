@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dockerhub-service
+secrets:
+  - name: dockercreds
+
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: java-http-echo-git
+spec:
+  type: git
+  params:
+    - name: revision
+      value: main
+    - name: url
+      value: https://github.com/tkak/java-http-echo.git
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: run-buildpacks-task
+spec:
+  serviceAccountName: dockerhub-service
+  taskRef:
+    name: buildpacks
+  params:
+  - name: BUILDER_IMAGE
+    value: gcr.io/paketo-buildpacks/builder:base
+  resources:
+    inputs:
+    - name: source
+      resourceRef:
+        name: java-http-echo-git
+    outputs:
+    - name: image
+      resourceSpec:
+        type: image
+        params:
+          - name: url
+            value: tkak/java-http-echo
+            #workspaces:
+            #- name: source
+            #  persistentVolumeClaim:
+            #    claimName: my-source-pvc
+
