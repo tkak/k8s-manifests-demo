@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cnb-pipeline
+spec:
+  workspaces:
+  - name: app-source
+  params:
+  - name: APP_NAME
+    type: string
+    description: The application deployment name
+  - name: APP_GIT_URL
+    type: string
+    description: The application git repository url
+  - name: APP_IMAGE
+    type: string
+    description: The application image in remote registry
+
+  tasks:
+  - name: git-clone
+    taskRef:
+      name: git-clone
+    params:
+    - name: url
+      value: $(params.APP_GIT_URL)
+    - name: deleteExisting
+      value: "true"
+    workspaces:
+    - name: output
+      workspace: app-source
+
+  - name: buildpacks
+    taskRef:
+      name: buildpacks
+    params:
+    - name: BUILDER_IMAGE
+      value: gcr.io/paketo-buildpacks/builder:base
+    - name: OUTPUT_IMAGE
+      value: $(params.APP_IMAGE)
+    runAfter:
+      - git-clone
+    workspaces:
+    - name: source
+      workspace: app-source
